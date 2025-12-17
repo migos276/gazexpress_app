@@ -1,0 +1,331 @@
+Crée une application mobile React Native complète pour la plateforme de commande et livraison de gaz de cuisine à domicile, connectée au backend Django REST API créé précédemment.
+Intégration avec le Backend Django :
+
+Consommer toutes les API REST du backend Django
+Authentification JWT (login, register, refresh token)
+Endpoints à intégrer :
+
+/api/auth/ - Authentification et gestion utilisateurs
+/api/stations/ - Gestion des stations de service
+/api/bouteilles/ - CRUD bouteilles de gaz (avec nom commercial obligatoire)
+/api/commandes/ - Gestion des commandes
+/api/paiements/ - Traitement des paiements
+/api/livreurs/ - Gestion des livreurs
+/api/zones/ - Zones de livraison
+Tous les autres endpoints définis dans le backend Django
+
+
+
+Architecture Technique :
+
+React Native (dernière version stable)
+Navigation : React Navigation 6+
+Gestion d'état : Redux Toolkit ou Context API + useReducer
+API : Axios avec intercepteurs configurés pour le backend Django
+Base URL : variable d'environnement pointant vers le serveur Django
+Authentification : JWT (stockage sécurisé avec AsyncStorage ou SecureStore)
+Carte/Géolocalisation : react-native-maps + react-native-geolocation
+Paiement : intégration SDK correspondant au backend (Stripe, Flutterwave, etc.)
+Notifications : react-native-push-notification ou Firebase Cloud Messaging
+UI : React Native Paper ou NativeBase (design moderne)
+
+Interfaces par Type d'Utilisateur (selon les rôles du backend) :
+1. AUTHENTIFICATION (Commune) :
+
+Écran de bienvenue/splash
+Connexion (email + mot de passe) → appel API /api/auth/login/
+Inscription avec sélection de rôle (Client, Livreur, Station) → /api/auth/register/
+Récupération de mot de passe → /api/auth/password-reset/
+Validation du compte
+
+2. CLIENT - Écrans :
+Navigation principale (Bottom Tabs) :
+
+Accueil :
+
+Barre de recherche (par nom de bouteille, marque, station)
+Appel API : GET /api/bouteilles/?search=&type=&station=
+Filtres (type: 6kg/12kg/15kg, prix, zone, disponibilité)
+Liste/Grille des bouteilles disponibles affichant :
+
+Nom commercial de la bouteille (champ du modèle Django)
+Image (URL du backend)
+Type et marque
+Prix
+Nom de la station
+Stock disponible
+Badge "Disponible" / "Stock faible"
+
+
+Tri par (prix, proximité, popularité)
+
+
+Détail Bouteille :
+
+Appel API : GET /api/bouteilles/{id}/
+Toutes les infos détaillées du backend
+Sélecteur de quantité
+Bouton "Commander maintenant"
+Infos station (avec carte localisation depuis coordonnées GPS backend)
+Avis clients (optionnel)
+
+
+Panier :
+
+Gestion locale (Redux/Context)
+Liste des articles sélectionnés
+Modification quantités
+Adresse de livraison (saisie manuelle + GPS)
+Sélection sur carte interactive
+Appel API zones : GET /api/zones/ pour calcul frais de livraison
+Calcul automatique : prix bouteilles + frais de livraison
+Total à payer
+Bouton "Passer au paiement"
+
+
+Paiement :
+
+Choix du mode (selon méthodes configurées dans le backend)
+Appel API : POST /api/commandes/ pour créer la commande
+Appel API : POST /api/paiements/ pour traiter le paiement
+Intégration SDK de paiement
+Confirmation de commande
+Reçu numérique
+
+
+Mes Commandes :
+
+Appel API : GET /api/commandes/?client={user_id}
+Liste avec statuts visuels (selon statuts backend) :
+
+En attente (orange)
+Assignée (bleu)
+En cours de livraison (vert)
+Livrée (gris)
+Annulée (rouge)
+
+
+Suivi en temps réel avec carte
+Détails de chaque commande (nom bouteille inclus)
+Bouton "Récommander"
+Historique complet
+
+
+Profil :
+
+Appel API : GET /api/auth/profile/
+Infos personnelles (modification) → PUT /api/auth/profile/
+Adresses enregistrées
+Moyens de paiement sauvegardés
+Paramètres notifications
+Support/Contact
+Déconnexion (suppression token local)
+
+
+
+3. LIVREUR - Écrans :
+Navigation principale (Bottom Tabs) :
+
+Bouteilles Disponibles :
+
+Appel API : GET /api/bouteilles/?zone={livreur_zone}&disponible=true
+Liste des bouteilles de gaz dans sa zone
+Filtres par station, type, prix
+Vue carte avec pins des stations (coordonnées GPS du backend)
+Nom commercial visible pour chaque bouteille
+Stock en temps réel
+
+
+Mes Livraisons :
+
+Appel API : GET /api/commandes/?livreur={user_id}&statut=assignee,en_cours
+Commandes assignées (en attente d'acceptation)
+Livraisons en cours
+Carte avec itinéraire vers client (coordonnées GPS commande)
+Infos client : nom, téléphone, adresse
+Détails commande (nom bouteille du backend, quantité)
+Boutons d'action :
+
+"Accepter livraison" → PATCH /api/commandes/{id}/ (statut)
+"Commencer livraison" → PATCH /api/commandes/{id}/
+"Bouteille récupérée" → PATCH /api/commandes/{id}/
+"Livraison effectuée" → PATCH /api/commandes/{id}/
+"Appeler le client" (tel: depuis backend)
+
+
+Historique des livraisons complétées
+
+
+Statistiques :
+
+Appel API : GET /api/livreurs/{id}/statistiques/
+Nombre de livraisons du jour/semaine/mois
+Revenus estimés
+Note moyenne (si système d'évaluation)
+Graphiques de performance
+
+
+Profil :
+
+Appel API : GET /api/livreurs/{id}/
+Infos personnelles
+Infos véhicule
+Statut (Disponible/Indisponible) - toggle → PATCH /api/livreurs/{id}/
+Zone de livraison assignée (depuis backend)
+Paramètres
+Support
+Déconnexion
+
+
+
+4. STATION DE SERVICE - Écrans :
+Navigation principale (Bottom Tabs) :
+
+Catalogue :
+
+Appel API : GET /api/bouteilles/?station={station_id}
+Liste de leurs bouteilles publiées
+Bouton "+ Ajouter nouvelle bouteille"
+Modification rapide du stock → PATCH /api/bouteilles/{id}/
+Édition/Suppression produits → PUT/DELETE /api/bouteilles/{id}/
+Indicateurs visuels de stock faible
+
+
+Ajouter/Modifier Bouteille :
+
+Formulaire complet mappé au modèle Django Bouteille :
+
+Nom commercial (obligatoire - champ required du backend)
+Type (sélection : 6kg, 12kg, 15kg, autre)
+Marque/Fournisseur
+Prix (XAF ou devise locale)
+Stock disponible
+Description
+Photo (upload → POST /api/bouteilles/ avec multipart/form-data)
+Code produit
+
+
+Appel API : POST /api/bouteilles/ (création) ou PUT /api/bouteilles/{id}/ (modification)
+Validation et sauvegarde
+
+
+Commandes Reçues :
+
+Appel API : GET /api/commandes/?station={station_id}
+Liste des commandes pour cette station
+Filtres par statut
+Détails commandes (client, bouteille commandée avec nom, quantité)
+Assigner un livreur disponible → PATCH /api/commandes/{id}/assigner_livreur/
+Marquer comme "Prête à livrer" → PATCH /api/commandes/{id}/
+Historique
+
+
+Livreurs :
+
+Appel API : GET /api/livreurs/?station={station_id}
+Liste des livreurs rattachés
+Statut de disponibilité
+Performances (livraisons effectuées)
+
+
+Statistiques :
+
+Appel API : GET /api/stations/{id}/statistiques/
+Ventes du jour/semaine/mois
+Bouteilles les plus vendues (par nom depuis backend)
+Graphiques de revenus
+Alertes stock faible
+
+
+Profil Station :
+
+Appel API : GET /api/stations/{id}/
+Infos de la station (modification) → PUT /api/stations/{id}/
+Horaires d'ouverture
+Coordonnées GPS
+Paramètres
+Support
+Déconnexion
+
+
+
+5. ADMINISTRATEUR - Écrans :
+Navigation principale (Drawer ou Tabs) :
+
+Dashboard :
+
+Appel API : GET /api/admin/dashboard/
+Statistiques globales (cartes)
+Nombre total : clients, livreurs, stations, commandes
+Revenus totaux
+Graphiques de performance
+Commandes en temps réel
+
+
+Gestion Utilisateurs :
+
+Onglets : Clients / Livreurs / Stations
+Appel API : GET /api/auth/users/?role=client|livreur|station
+Liste avec recherche et filtres
+Actions : Voir détails, Activer/Désactiver, Supprimer
+POST /api/auth/users/ pour créer nouvel utilisateur
+
+
+Gestion Stations :
+
+Appel API : GET /api/stations/
+Liste complète des stations
+Voir/Éditer infos stations → PUT /api/stations/{id}/
+Activer/Désactiver
+Voir catalogue de chaque station
+
+
+Gestion Bouteilles :
+
+Appel API : GET /api/bouteilles/ (vue admin)
+Vue globale de toutes les bouteilles
+Recherche par nom, station, type
+Modération si nécessaire
+
+
+Toutes les Commandes :
+
+Appel API : GET /api/commandes/ (vue admin avec tous filtres)
+Liste complète avec filtres avancés
+Vue détaillée de chaque commande
+Possibilité d'intervention/annulation → PATCH /api/commandes/{id}/
+
+
+Paiements :
+
+Appel API : GET /api/paiements/
+Historique de toutes les transactions
+Filtres par statut, méthode, date
+Export de rapports (CSV, PDF)
+
+
+Zones de Livraison :
+
+Appel API : GET /api/zones/
+Gestion des zones → POST/PUT/DELETE /api/zones/{id}/
+Définir prix de livraison par zone
+Vue carte avec zones délimitées
+
+
+Rapports :
+
+Appel API : GET /api/admin/rapports/?type=ventes|stations|bouteilles|livreurs
+Rapports de ventes
+Rapports par station
+Rapports par type de bouteille (noms les plus vendus)
+Rapports de performance livreurs
+Export (PDF, Excel)
+
+
+Paramètres :
+
+Configuration générale de l'app
+Gestion des notifications
+Paramètres de paiement
+Support/Contact
+Déconnexion
